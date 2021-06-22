@@ -1,5 +1,4 @@
 import json
-from datetime import datetime
 
 from dateutil import parser
 from elasticsearch import Elasticsearch
@@ -12,22 +11,12 @@ DATA_FILE = "elektrina_data.txt"
 
 es = Elasticsearch()
 
-doc = {
-    'author': 'kimchy',
-    'text': 'Elasticsearch: cool. bonsai cool.',
-    'timestamp': datetime.now(),
-}
+try:
+    res = es.search(index="flash-data", body={"query": {"match_all": {}}})
+    print("Got %d Hits:" % res['hits']['total']['value'])
+except Exception as ex:
+    print(f"Could not read flash-data from elastic: {ex}")
 
-res = es.index(index="test-index", body=doc)
-print(res['result'])
-
-
-es.indices.refresh(index="test-index")
-
-res = es.search(index="test-index", body={"query": {"match_all": {}}})
-print("Got %d Hits:" % res['hits']['total']['value'])
-for hit in res['hits']['hits']:
-    print("%(timestamp)s %(author)s: %(text)s" % hit["_source"])
 
 @app.route("/")
 def index():
@@ -36,14 +25,16 @@ def index():
 
 @app.route('/new-data', methods=['POST'])
 def new_data():
-    date = json.loads(request.data)["data"]
-    parsedDate = parser.parse(date)
-    print(parsedDate)
+    data_id = json.loads(request.data)["id"]
+    date = json.loads(request.data)["date"]
+    parsed_date = parser.parse(date)
     try:
         with open(DATA_FILE, "a") as data_file:
             data_file.write(f"{date}\n")
-    except Exception as e:
-        return f"error - {e}"
+            result = es.index(index="flash-data", body={'id': data_id, 'timestamp': parsed_date})
+            print(f"{data_id} - {date} : {result['result']}")
+    except Exception as ex:
+        return f"error - {ex}"
     return 'ok'
 
 
