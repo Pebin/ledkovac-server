@@ -1,47 +1,42 @@
 import json
 
 from dateutil import parser
+from elasticsearch import Elasticsearch
 from flask import Flask
 from flask import request
-from flask_prometheus_metrics import register_metrics
-from prometheus_client import make_wsgi_app, Gauge, CollectorRegistry, push_to_gateway
-from werkzeug.middleware.dispatcher import DispatcherMiddleware
-from werkzeug.serving import run_simple
 
 app = Flask(__name__)
 
 DATA_FILE = "elektrina_data.txt"
 
+es = Elasticsearch()
 
-registry = CollectorRegistry()
-
-test_endpoint = Gauge('test_metric', 'testovaci endpoint', registry=registry)
-data_endpoint = Gauge('data_metric', 'ledkovaci endpoint', registry=registry)
-
+try:
+    res = es.search(index="flash-data", body={"query": {"match_all": {}}})
+    print("Got %d Hits:" % res['hits']['total']['value'])
+except Exception as ex:
+    print(f"Could not read flash-data from elastic: {ex}")
 
 
 @app.route("/")
 def index():
-    test_endpoint.inc(20)
-    push_to_gateway()
     return "Test"
 
 
 @app.route('/new-data', methods=['POST'])
 def new_data():
-    date = json.loads(request.data)["data"]
-    parsedDate = parser.parse(date)
-    print(parsedDate)
+    data_id = json.loads(request.data)["id"]
+    date = json.loads(request.data)["date"]
+    parsed_date = parser.parse(date)
     try:
         with open(DATA_FILE, "a") as data_file:
             data_file.write(f"{date}\n")
-    except Exception as e:
-        return f"error - {e}"
+            result = es.index(index="flash-data", body={'id': data_id, 'timestamp': parsed_date})
+            print(f"{data_id} - {date} : {result['result']}")
+    except Exception as ex:
+        return f"error - {ex}"
     return 'ok'
 
 
-register_metrics(app, app_version="v0.1.2", app_config="staging")
-dispatcher = DispatcherMiddleware(app.wsgi_app, {"/metrics": make_wsgi_app()})
-
 if __name__ == "__main__":
-    run_simple(hostname="0.0.0.0", port=5050, application=dispatcher)
+    app.run(host="0.0.0.0", port=5050)
