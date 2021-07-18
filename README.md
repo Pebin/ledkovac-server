@@ -1,10 +1,11 @@
 # ledkovac-server
 
 ## how to run
+* docker-compose build
 * docker-compose up
 
 #### ledkovac server 
-* localhost:5050 
+* localhost:5600 
 #### kibana
 * localhost:5601
 
