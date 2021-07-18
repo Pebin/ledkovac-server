@@ -2,3 +2,4 @@ flask
 python-dateutil
 flask_prometheus_metrics
 elasticsearch
+gunicorn

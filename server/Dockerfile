@@ -5,4 +5,4 @@ RUN pip3 install --upgrade pip && pip3 install --no-cache-dir -r requirements.tx
 
 EXPOSE 5600
 
-CMD ["python", "main.py"]
+ENTRYPOINT ["./gunicorn.sh"]
