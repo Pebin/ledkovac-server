@@ -18,6 +18,7 @@ services:
       - node.name=es01
       - cluster.initial_master_nodes=es01
       - bootstrap.memory_lock=true
+      - xpack.ml.enabled=false
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
     ulimits:
       memlock:
